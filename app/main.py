@@ -1,11 +1,12 @@
 import logging
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.interfaces.schema import Response
-from core.config import get_settings
 from app.infrastructure.logging import setup_logging
+from core.config import get_settings
+from app.interfaces.endpoints.routes import api_router
 
 # 1.加载配置信息
 settings = get_settings()
@@ -14,31 +15,45 @@ settings = get_settings()
 setup_logging()
 logger = logging.getLogger()
 
-app = FastAPI()
+# 3.定义 FastAPI 路由 tags 标签
+openapi_tags = [
+    {
+        "name": "状态模块",
+        "description": "包含 状态监测 等 API 接口,用于监控系统运行状态",
+    }
+]
 
 
-class User(BaseModel):
-    id: int
-    name: str
-    age: int
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    创建 FastAPI 应用程序生命周期上下文管理
+    """
+    logger.info("nano-manus is initializing...")
+    
+    # todo 
+    try:
+        # lifespan 节点/分界
+        yield
+    finally:
+        logger.info("nano-manus is shutting down...")
 
+app = FastAPI(
+    title="nano-manus通用智能体",
+    description="nano-manus 是一个通用智能体系统,可以完全私有部署,使用 A2A+MCP连接 Agent/Tools,同时支持在沙箱环境中运行",
+    lifespan=lifespan,
+    version="0.1.0",
+    tags=openapi_tags,
+)
 
-repository = {
-    1: User(id=1, name="John", age=30),
-    2: User(id=2, name="Jane", age=25),
-    3: User(id=3, name="Bob", age=40),
-}
+# 5.配置 CORS 中间件,解决跨域问题
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-
-@app.get("/users/{user_id}", response_model=Response[User])
-async def get_user(user_id: int):
-    user = repository.get(user_id)
-    if user:
-        return Response.success(data=user)
-    return Response.error(code=404, msg="User not found")
-
-
-@app.get("/users", response_model=Response[list[User]])
-async def get_all_users():
-    users = list(repository.values())
-    return Response.success(data=users)
+# 6.集成路由
+app.include_router(api_router, prefix="/api")
