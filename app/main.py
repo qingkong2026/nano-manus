@@ -6,15 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.infrastructure.logging import setup_logging
 from core.config import get_settings
-from app.infrastructure.storage.redis import get_redis_client
+from app.infrastructure.storage.redis import get_redis
+from app.infrastructure.storage.postgres import get_postgres
 from app.interfaces.endpoints.routes import api_router
 from app.interfaces.errors.exception_handler import register_exception_handler
 
 
 # 1.加载配置信息
 settings = get_settings()
-
-print(settings)
 
 # 2.设置日志管理器
 setup_logging()
@@ -37,15 +36,20 @@ async def lifespan(app: FastAPI):
     logger.info("nano-manus is initializing...")
 
     # 初始化 redis 客户端
-    redis_client = get_redis_client()
-    await redis_client.init()
+    redis = get_redis()
+    await redis.init()
+
+    # 初始化 postgres 客户端
+    postgres = get_postgres()
+    await postgres.init()
     
     # todo 
     try:
         # lifespan 节点/分界
         yield
     finally:
-        await redis_client.shutdown()
+        await redis.shutdown()
+        await postgres.shutdown()
         logger.info("nano-manus is shutting down...")
 
 app = FastAPI(

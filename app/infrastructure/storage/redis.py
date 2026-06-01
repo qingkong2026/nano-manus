@@ -49,6 +49,8 @@ class RedisClient:
         if self._client is not None:
             await self._client.close()
             logger.info("RedisClient shutdown successfully")
+            # 清除缓存
+            get_redis.cache_clear()
 
     @property
     def client(self) -> Redis | None:
@@ -61,7 +63,7 @@ class RedisClient:
 
 
 @lru_cache()
-def get_redis_client() -> RedisClient:
+def get_redis() -> RedisClient:
     """
     获取 redis 客户端
     """
