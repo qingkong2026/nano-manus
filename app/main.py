@@ -1,11 +1,18 @@
+import logging
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app.interfaces.schema import Response
 from core.config import get_settings
+from app.infrastructure.logging import setup_logging
 
 # 1.加载配置信息
 settings = get_settings()
+
+# 2.设置日志管理器
+setup_logging()
+logger = logging.getLogger()
 
 app = FastAPI()
 
