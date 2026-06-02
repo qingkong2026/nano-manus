@@ -1,5 +1,7 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     """
@@ -19,12 +21,21 @@ class Settings(BaseSettings):
     redis_db: int = 0
     redis_password: str | None = None
 
+    # 腾讯云 COS 存储配置
+    cos_secret_id: str = ""
+    cos_secret_key: str = ""
+    cos_region: str = ""
+    cos_schema: str = "https"
+    cos_bucket: str = ""
+    cos_domain: str = ""
+
     # 使用 Pydantic V2 写法来完成环境变量信息的告知
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
 
 @lru_cache
 def get_settings() -> Settings:

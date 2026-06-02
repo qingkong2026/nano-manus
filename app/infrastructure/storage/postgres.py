@@ -60,9 +60,7 @@ class Postgres:
                 await async_conn.execute(
                     text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
                 )
-                logger.info(
-                    "Postgres engine initialized successfully and uuid-ossp extension installed"
-                )
+                logger.info("Postgres engine initialized successfully and uuid-ossp extension installed")
         except Exception as e:
             logger.error(f"Failed to initialize Postgres engine: {e}")
             raise

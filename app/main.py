@@ -8,6 +8,8 @@ from app.infrastructure.logging import setup_logging
 from core.config import get_settings
 from app.infrastructure.storage.redis import get_redis
 from app.infrastructure.storage.postgres import get_postgres
+from app.infrastructure.storage.cos import get_cos
+
 from app.interfaces.endpoints.routes import api_router
 from app.interfaces.errors.exception_handler import register_exception_handler
 
@@ -35,21 +37,19 @@ async def lifespan(app: FastAPI):
     """
     logger.info("nano-manus is initializing...")
 
-    # 初始化 redis 客户端
-    redis = get_redis()
-    await redis.init()
-
-    # 初始化 postgres 客户端
-    postgres = get_postgres()
-    await postgres.init()
+    # 初始化 redis/postgres/cos 客户端
+    await get_redis().init()
+    await get_postgres().init()
+    await get_cos().init()
     
     # todo 
     try:
         # lifespan 节点/分界
         yield
     finally:
-        await redis.shutdown()
-        await postgres.shutdown()
+        await get_redis().shutdown()
+        await get_postgres().shutdown()
+        await get_cos().shutdown()
         logger.info("nano-manus is shutting down...")
 
 app = FastAPI(
