@@ -19,3 +19,9 @@ env/
 logs/
 *.log
 *.tmp
+
+# 数据库迁移缓存（自动生成，无需提交）
+alembic/alembic.ini
+alembic.ini
+
+.manus/

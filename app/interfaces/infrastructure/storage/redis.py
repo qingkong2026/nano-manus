@@ -47,7 +47,7 @@ class RedisClient:
         关闭 redis 客户端
         """
         if self._client is not None:
-            await self._client.close()
+            await self._client.aclose()
             logger.info("RedisClient shutdown successfully")
             # 清除缓存
             get_redis.cache_clear()

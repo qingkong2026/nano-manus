@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # 项目基础配置
     env: str = "development"
     log_level: str = "INFO"
+    app_config_filepath: str = ".manus/config.json"
 
     # 数据库相关配置
     sqlalchemy_database_url: str = ""

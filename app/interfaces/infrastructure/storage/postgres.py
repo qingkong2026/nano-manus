@@ -1,7 +1,6 @@
 import logging
-import re
 from functools import lru_cache
-from typing import AsyncGenerator, Optional
+from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -96,7 +95,7 @@ def get_postgres() -> Postgres:
     return Postgres()
 
 
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_db_session() -> AsyncSession:
     """
     异步获取数据库会话实例，确保会话在正确使用后被关闭
     """

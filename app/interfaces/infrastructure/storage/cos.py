@@ -24,7 +24,7 @@ class Cos:
         """
         # 1.判断是否已经初始化
         if self._client is not None:
-            logger.warning("qcloud cos client already initialized")
+            logger.warning("qcloud_cos client already initialized")
             return
         try:
             # 2.初始化客户端
@@ -36,9 +36,9 @@ class Cos:
                 Scheme=self._settings.cos_schema,
             )
             self._client = CosS3Client(config)
-            logger.info("qcloud cos client initialized successfully ...")
+            logger.info("qcloud_cos client initialized successfully ...")
         except Exception as e:
-            logger.error("failed to initialize qcloud cos client: %s", e)
+            logger.error("failed to initialize qcloud_cos client: %s", e)
             raise
 
     async def shutdown(self) -> None:
@@ -47,7 +47,7 @@ class Cos:
         """
         if self._client:
             self._client = None
-            logger.info("qcloud cos client shutdown successfully ...")
+            logger.info("qcloud_cos client shutdown successfully ...")
 
     @property
     def client(self) -> CosS3Client:
@@ -55,7 +55,7 @@ class Cos:
         获取 Cos 客户端
         """
         if self._client is None:
-            raise ValueError("qcloud cos client not initialized, please call init() first")
+            raise ValueError("qcloud_cos client not initialized, please call init() first")
         return self._client
 
 @lru_cache
