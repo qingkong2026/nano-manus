@@ -31,7 +31,7 @@ class Task(Protocol):
         """执行任务"""
         ...
 
-    async def cancel(self) -> None:
+    def cancel(self) -> bool:
         """取消当前任务"""
         ...
 
@@ -66,6 +66,6 @@ class Task(Protocol):
         ...
 
     @classmethod
-    def destroy(cls) -> None:
+    async def destroy(cls) -> None:
         """类方法，销毁所有任务实例"""
         ...
