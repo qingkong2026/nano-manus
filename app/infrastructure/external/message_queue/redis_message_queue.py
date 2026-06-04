@@ -66,9 +66,7 @@ class RedisMessageQueue(MessageQueue):
     async def put(self, message: Any) -> str:
         """将消息放入队列"""
         logger.debug(f"往消息队列{self._stream_name}中添加一条消息：{message}")
-        message_id = await self._redis.client.xadd(
-            self._stream_name, {"data": message}
-        )
+        message_id = await self._redis.client.xadd(self._stream_name, {"data": message})
         return message_id
 
     async def get(self, start_id: str = None, block_ms: int = None) -> Tuple[str, Any]:
@@ -108,10 +106,10 @@ class RedisMessageQueue(MessageQueue):
         logger.debug(f"从消息队列{self._stream_name}中获取并移除一条消息")
 
         # 1.构建锁
-        lock_value = f"lock:{self._stream_name}:pop"
+        lock_key = f"lock:{self._stream_name}:pop"
 
         # 2.构建分布式锁，如果分布式锁创建失败则返回 None
-        lock_value = self._acquire_lock(lock_value)
+        lock_value = await self._acquire_lock(lock_key)
         if not lock_value:
             return None, None
 
@@ -133,6 +131,8 @@ class RedisMessageQueue(MessageQueue):
         except Exception as e:
             logger.error(f"从消息队列{self._stream_name}中获取并移除消息失败：{e}")
             return None, None
+        finally:
+            await self._release_lock(lock_key, lock_value)
 
     async def clear(self) -> None:
         """清空消息队列"""
