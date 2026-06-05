@@ -1,4 +1,4 @@
-from app.domain.models import AppConfig, LLMConfig
+from app.domain.models import AgentConfig, AppConfig, LLMConfig
 from app.domain.repository import AppConfigRepository
 
 class AppConfigService:
@@ -27,3 +27,26 @@ class AppConfigService:
         self.app_config_repo.save(app_config)
         # 3.返回更新后的LLM配置
         return app_config.llm_config
+
+    def get_agent_config(self) -> AgentConfig:
+        """获取Agent通用配置"""
+        return self._load_app_config().agent_config
+
+    def update_agent_config(self, agent_config: AgentConfig) -> AgentConfig:
+        """根据传递的 agent_config 更新语言模型供应商配置"""
+        # 1.加载应用配置
+        app_config = self._load_app_config()
+        app_config.agent_config = agent_config
+        # 2.保存应用配置
+        self.app_config_repo.save(app_config)
+        # 3.返回更新后的LLM配置
+        return app_config.agent_config
+
+
+
+
+
+
+
+
+

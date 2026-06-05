@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends
 
 from app.application.services import AppConfigService
-from app.domain.models import LLMConfig
+from app.domain.models import AgentConfig, LLMConfig
 from app.interfaces.dependencies import get_app_config_service
 from app.interfaces.schema import Response
 
@@ -35,7 +35,7 @@ async def get_llm_config(
 )
 async def update_llm_config(
     new_llm_config: LLMConfig,
-    app_config_service: AppConfigService = Depends(get_app_config_service)
+    app_config_service: AppConfigService = Depends(get_app_config_service),
 ):
     """
     更新LLM配置信息
@@ -43,5 +43,40 @@ async def update_llm_config(
     update_llm_config = app_config_service.update_llm_config(new_llm_config)
     return Response.success(
         msg="更新LLM信息配置成功",
-        data=update_llm_config.model_dump(exclude={"api_key"})
+        data=update_llm_config.model_dump(exclude={"api_key"}),
+    )
+
+
+@router.get(
+    path="/agent",
+    response_model=Response[AgentConfig],
+    summary="获取Agent通用配置信息",
+    description="包含最大迭代次数、最大重试次数、最大搜索次数",
+)
+async def get_agent_config(
+    app_config_service: AppConfigService = Depends(get_app_config_service),
+) -> Response[AgentConfig]:
+    """
+    获取LLM配置信息
+    """
+    agent_config: AgentConfig = app_config_service.get_agent_config()
+    return Response.success(data=agent_config.model_dump())
+
+
+@router.post(
+    path="/agent",
+    response_model=Response[AgentConfig],
+    summary="更新Agent通用配置信息",
+    description="更新Agent配置信息",
+)
+async def update_agent_config(
+    new_agent_config: AgentConfig,
+    app_config_service: AppConfigService = Depends(get_app_config_service),
+):
+    """
+    更新LLM配置信息
+    """
+    update_agent_config = app_config_service.update_agent_config(new_agent_config)
+    return Response.success(
+        msg="更新Agent通用配置成功", data=update_agent_config.model_dump()
     )

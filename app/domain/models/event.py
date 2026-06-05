@@ -96,10 +96,13 @@ class ToolEvent(BaseEvent):
     type: Literal["tool"] = "tool"
     tool_call_id: str  # 工具调用 Id
     toolset_name: str  # 工具箱名字
-    tool_output: Optional[ToolOutput] = None  # 工具结构化扩展输出
     tool_name: str  # 工具名字/LLM调用函数
+
     tool_input: Dict[str, Any]  # LLM 生成的工具调用参数
+
+    tool_output: Optional[ToolOutput] = None  # 工具结构化扩展输出
     tool_result: Optional[ToolResult] = None  # 工具调用结果
+
     status: ToolEventStatus = ToolEventStatus.CALLING  # 工具事件状态
 
 
