@@ -44,7 +44,7 @@ class RedisStreamTask(Task):
         # 1.检测 task_runner 是否存在，如果存在则调用 task_runner 的回调函数
         try:
             if self._task_runner:
-                await asyncio.create_task(self._task_runner.on_done(self))
+                await self._task_runner.on_done(self)
         finally:
             # 2. 清除当前任务对应的资源
             self._cleanup_registry()
@@ -55,6 +55,7 @@ class RedisStreamTask(Task):
             await self._task_runner.execute(self)
         except asyncio.CancelledError:
             logger.info(f"任务[{self._id}]执行被取消")
+            raise
         except Exception as e:
             logger.error(f"任务[{self._id}]执行出现异常：{str(e)}")
         finally:
@@ -73,10 +74,18 @@ class RedisStreamTask(Task):
 
     def cancel(self) -> bool:
         """取消当前执行的任务"""
+
+        # 1.任务还没启动
+        if self._execution_task is None:
+            logger.info(f"任务[{self._id}]尚未启动，直接清理")
+            self._cleanup_registry()
+            return True
+
+        # 2.任务已经结束，清除任务注册表中的记录
         if self.done:
-            # 1.任务已经结束，清除任务注册表中的记录
             return False
-        # 2.任务正在执行
+
+        # 3.任务正在执行
         self._execution_task.cancel()
         logger.info(f"任务[{self._id}]已经标记取消")
         return True
@@ -117,8 +126,9 @@ class RedisStreamTask(Task):
         for task_id in task_ids:
             # 获取对应的任务
             task = RedisStreamTask._task_registry[task_id]
-            # 取消任务
-            task.cancel()
+            if task:
+                # 取消任务
+                task.cancel()
 
         # 3.等待所有任务真正结束
         for task_id in task_ids:
