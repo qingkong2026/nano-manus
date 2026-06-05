@@ -1,11 +1,13 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, List, Literal, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
+from app.domain.models.file import File
 from app.domain.models.plan import Plan, Step
+from app.domain.models.tool_result import ToolResult
 
 
 class PlanEventStatus(str, Enum):
@@ -22,6 +24,13 @@ class StepEventStatus(str, Enum):
     STARTED = "started"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class ToolEventStatus(str, Enum):
+    """工具事件状态类型枚举"""
+
+    CALLING = "calling"  # 调用中
+    CALLED = "called"  # 调用完毕
 
 
 class BaseEvent(BaseModel):
@@ -61,8 +70,23 @@ class MessageEvent(BaseEvent):
     type: Literal["message"] = "message"
     role: Literal["user", "assistant"] = "assistant"
     message: str = ""  # 消息本身
-    # todo: 附件文件结构待完善
-    attachements: List[Any] = Field(default_factory=list)  # 附件列表信息
+    attachements: List[File] = Field(default_factory=list)  # 附件列表信息
+
+
+class BrowserToolOuput(BaseModel):
+    """浏览器工具扩展内容"""
+
+    screenshot: str  # 浏览器扩展截图
+
+
+class MCPToolOuput(BaseModel):
+    """MCP工具内容"""
+
+    result: Any
+
+
+# todo: 更多工具扩展内容
+ToolOutput = Union[BrowserToolOuput, MCPToolOuput]
 
 
 class ToolEvent(BaseEvent):
@@ -70,6 +94,13 @@ class ToolEvent(BaseEvent):
 
     # todo:工具事件等待工具模块接入后完善
     type: Literal["tool"] = "tool"
+    tool_call_id: str  # 工具调用 Id
+    toolset_name: str  # 工具箱名字
+    tool_output: Optional[ToolOutput] = None  # 工具结构化扩展输出
+    tool_name: str  # 工具名字/LLM调用函数
+    tool_input: Dict[str, Any]  # LLM 生成的工具调用参数
+    tool_result: Optional[ToolResult] = None  # 工具调用结果
+    status: ToolEventStatus = ToolEventStatus.CALLING  # 工具事件状态
 
 
 class WaitEvent(BaseEvent):
