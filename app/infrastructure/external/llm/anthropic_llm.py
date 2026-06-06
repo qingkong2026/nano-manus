@@ -31,7 +31,7 @@ class AnthropicLLM(LLM):
         self._timeout = 3600
 
         self._total_input_tokens = 0
-        self._total_input_tokens = 0
+        self._total_output_tokens = 0
 
     def _to_native_messages(self, uniform_messages: List[UniformMessage]) -> Tuple[Optional[str], List[Dict[str, Any]]]:
         """将 UniformMessage 转换成 厂商的规范"""
