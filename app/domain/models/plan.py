@@ -38,7 +38,7 @@ class Plan(BaseModel):
     title: str = ""  # 任务标题
     goal: str = ""  # 任务目标
     language: str = ""  # 工作语言
-    steps: List[Any] = Field(default_factory=list)  # 步骤列表/子任务列表
+    steps: List[Step] = Field(default_factory=list)  # 步骤列表/子任务列表
     message: str = ""  # 用户传递的消息
     status: ExecutionSatus = ExecutionSatus.PENDING  # 规划的状态
     error: Optional[str] = None  # 错误信息

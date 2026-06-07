@@ -95,6 +95,30 @@ class AnthropicLLM(LLM):
 
         return tool_choice
 
+    def _build_anthropic_output_config(self, format: Optional[Dict[str, Any]]) -> Optional[Dict]:
+        """
+        将 Agent 传递的 format 转换为 Anthropic 官方要求的 output_config
+        Args:
+            format: {"type": "json_schema"}
+        """
+        if not format:
+            return None
+
+        if format.get("type") == "json_schema":
+            return {
+                "format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "agent_structured_response",
+                        "schema": {"type": "object"}
+                    }
+                }
+            }
+
+        # 不支持的格式返回 None
+        return None
+        
+
     def _uniform_response(self, response) -> UniformMessage:
         """将 Anthropic 客户端的响应转换为统一的消息格式"""
         uniform_blocks = []
@@ -129,6 +153,7 @@ class AnthropicLLM(LLM):
         try:
 
             system_prompt, native_messages = self._to_native_messages(messages)
+            output_config = self._build_anthropic_output_config(format=response_format)
             converted_tool_choice = self._convert_tool_choice(tool_choice)
             kwargs = {
                 "model": self._model_name,
@@ -141,8 +166,8 @@ class AnthropicLLM(LLM):
             # 1.检测是否传递了工具列表
             if system_prompt:
                 kwargs["system"] = system_prompt
-            if response_format:
-                kwargs["output_config"] = response_format
+            if output_config:
+                kwargs["output_config"] = output_config
             if tools:
                 kwargs["tools"] = tools
             if tool_choice:

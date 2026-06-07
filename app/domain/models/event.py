@@ -14,7 +14,7 @@ class PlanEventStatus(str, Enum):
     """规划事件状态枚举"""
 
     CREATED = "created"  # 已创建
-    UODATED = "updated"  # 已更新
+    UPDATED = "updated"  # 已更新
     COMPLETED = "completed"  # 已完成
 
 

@@ -218,16 +218,7 @@ class BaseAgent(ABC):
 
             if not tool_calls:
                 logger.debug("无工具调用，正常结束")
-                text_content = "".join(
-                    block.text
-                    for block in message.content
-                    if isinstance(block, UniformTextBlock)
-                )
-                yield MessageEvent(
-                    role="assistant",
-                    message=text_content,
-                )
-                return
+                break
 
             # 5.循环遍历工具参数并执行
             tool_messages: List[UniformToolResultBlock] = []
@@ -265,7 +256,11 @@ class BaseAgent(ABC):
                 )
 
                 # 11.组装工具响应
-                tool_messages.append(UniformToolResultBlock(tool_use_id=tool_use_id, content=result.model_dump_json()))
+                tool_messages.append(
+                    UniformToolResultBlock(
+                        tool_use_id=tool_use_id, content=result.model_dump_json()
+                    )
+                )
 
             tool_results_message = UniformMessage.create_tool_result(tool_messages)
 
@@ -279,3 +274,14 @@ class BaseAgent(ABC):
             yield ErrorEvent(
                 error=f"Agent迭代次数超过最大迭代次数：{self._agent_config.max_iterations}，任务处理失败"
             )
+
+        text_content = "".join(
+            block.text
+            for block in message.content
+            if isinstance(block, UniformTextBlock)
+        )
+
+        yield MessageEvent(
+            role="assistant",
+            message=text_content,
+        )
