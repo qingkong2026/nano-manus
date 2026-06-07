@@ -34,7 +34,7 @@ class UniformToolUseBlock(BaseModel):
     """工具调用内容块：存放 LLM 调用工具的请求"""
 
     type: Literal[BlockType.TOOL_USE] = BlockType.TOOL_USE
-    id: str = ""
+    tool_use_id: str = ""
     name: str = ""
     arguments: Dict[str, Any] = Field(default_factory=dict)
 
@@ -43,7 +43,7 @@ class UniformToolResultBlock(BaseModel):
     """工具执行结果内容块：存放工具执行的结果"""
 
     type: Literal[BlockType.TOOL_RESULT] = BlockType.TOOL_RESULT
-    id: str = ""
+    tool_use_id: str = ""
     content: str = ""
     is_error: bool = False
 

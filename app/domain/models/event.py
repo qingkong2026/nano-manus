@@ -94,7 +94,7 @@ class ToolEvent(BaseEvent):
 
     # todo:工具事件等待工具模块接入后完善
     type: Literal["tool"] = "tool"
-    tool_call_id: str  # 工具调用 Id
+    tool_use_id: str  # 工具调用 Id
     tool_set_name: str  # 工具箱名字
     tool_name: str  # 工具名字/LLM调用函数
 

@@ -7,17 +7,23 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from app.domain.external.json_parser import JSONParser
 from app.domain.external.llm import LLM
 from app.domain.models import AgentConfig
-from app.domain.models.event import ErrorEvent, Event, MessageEvent, ToolEvent, ToolEventStatus
+from app.domain.models.event import (
+    ErrorEvent,
+    Event,
+    MessageEvent,
+    ToolEvent,
+    ToolEventStatus,
+)
 from app.domain.models.memory import (
     BlockType,
     Memory,
     MessageRole,
-    UniformContentBlock,
     UniformMessage,
     UniformTextBlock,
     UniformToolResultBlock,
     UniformToolUseBlock,
 )
+from app.domain.models.message import Message
 from app.domain.models.tool_result import ToolResult
 from app.domain.services.tools.base import BaseToolSet
 
@@ -129,23 +135,62 @@ class BaseAgent(ABC):
             role=MessageRole.ASSISTANT,
             content=[UniformTextBlock(text="调用模型失败，请稍后重试")],
         )
-        logger.critical(f"LLM 调用已达到最大重试次数 {self._agent_config.max_retries}，无法获取有效响应")
+        logger.critical(
+            f"LLM 调用已达到最大重试次数 {self._agent_config.max_retries}，无法获取有效响应"
+        )
         return error_message
 
     async def _add_to_memory(self, messages: List[UniformMessage]) -> None:
         """将对应的信息添加到记忆中"""
         # 1.检查记忆的消息列表是否为空，如果为空则需要添加预设系统 prompt 作为初始记忆
         if self._memory.empty:
-            self._memory.add_message({"role": "system", "content": self._system_prompt})
-
+            self._memory.add_message(
+                UniformMessage.create_text(MessageRole.SYSTEM, self._system_prompt)
+            )
         # 2.将正常消息添加到记忆中
         self._memory.add_messages(messages)
 
     async def compact_memory(self) -> None:
         """压缩 Agent 的记忆"""
-        self._memory.compact()
+        self._memory.compact(target_tools=[])
 
-    # todo: Agent 的回滚 roll_back 未实现。
+    async def roll_back(self, message: Message) -> None:
+        """Agent的状态回滚，该函数用于确保Agent的消息列表是正确，用于发送新消息、暂停/停止任务"""
+        # 1.取出记忆中最后一条消息，检查是否是有工具调用
+        last_message = self._memory.get_last_message()
+        if not last_message:
+            return
+
+        if last_message.role != MessageRole.ASSISTANT:
+            return
+
+        tool_use_blocks = [
+            block
+            for block in last_message.content
+            if block.type == BlockType.TOOL_USE or block.type == "tool_use"
+        ]
+
+        if not tool_use_blocks:
+            return
+
+        has_normal_tool = any(
+            block.name != "message_ask_user" for block in tool_use_blocks
+        )
+
+        if has_normal_tool:
+            self._memory.roll_back()
+            return
+
+        tool_result_blocks = [
+            UniformToolResultBlock(
+                tool_use_id=block.tool_use_id,
+                content=message.model_dump_json(),
+                is_error=False,
+            )
+            for block in tool_use_blocks
+        ]
+
+        self._memory.add_message(UniformMessage.create_tool_result(tool_result_blocks))
 
     async def invoke(
         self, query: str, format: Optional[str] = None
@@ -173,13 +218,22 @@ class BaseAgent(ABC):
 
             if not tool_calls:
                 logger.debug("无工具调用，正常结束")
-                break
+                text_content = "".join(
+                    block.text
+                    for block in message.content
+                    if isinstance(block, UniformTextBlock)
+                )
+                yield MessageEvent(
+                    role="assistant",
+                    message=text_content,
+                )
+                return
 
             # 5.循环遍历工具参数并执行
-            tool_messages = []
+            tool_messages: List[UniformToolResultBlock] = []
             for tool_call in tool_calls:
                 # 6.获取工具 id , 名字，参数信息
-                tool_call_id = tool_call.id if tool_call else str(uuid.uuid4())
+                tool_use_id = tool_call.tool_use_id if tool_call else str(uuid.uuid4())
                 tool_name = tool_call.name
                 tool_input = tool_call.arguments
 
@@ -188,7 +242,7 @@ class BaseAgent(ABC):
 
                 # 8.返回工具即将调用事件
                 yield ToolEvent(
-                    tool_call_id=tool_call_id,
+                    tool_use_id=tool_use_id,
                     tool_set_name=tool_set.name,
                     tool_name=tool_name,
                     tool_input=tool_input,
@@ -202,7 +256,7 @@ class BaseAgent(ABC):
 
                 # 10.返回工具调用完成事件
                 yield ToolEvent(
-                    tool_call_id=tool_call_id,
+                    tool_use_id=tool_use_id,
                     tool_set_name=tool_set.name,
                     tool_name=tool_name,
                     tool_input=tool_input,
@@ -211,11 +265,7 @@ class BaseAgent(ABC):
                 )
 
                 # 11.组装工具响应
-                tool_messages.append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_call_id,
-                    "content": result.model_dump(),
-                })
+                tool_messages.append(UniformToolResultBlock(tool_use_id=tool_use_id, content=result.model_dump_json()))
 
             tool_results_message = UniformMessage.create_tool_result(tool_messages)
 
@@ -229,10 +279,3 @@ class BaseAgent(ABC):
             yield ErrorEvent(
                 error=f"Agent迭代次数超过最大迭代次数：{self._agent_config.max_iterations}，任务处理失败"
             )
-
-        text_content = "".join([block.text for block in message.content if hasattr(block, "text")])
-        yield MessageEvent(
-            role="assistant",
-            message=text_content
-        )
-        return

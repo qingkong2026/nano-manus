@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -43,7 +42,7 @@ class AnthropicLLM(LLM):
             # 转换1: 抓取系统全局预设，拼成一个大文本
             if msg.role == MessageRole.SYSTEM:
                 for block in msg.content:
-                    if block in msg.content:
+                    if block.type == BlockType.TEXT:
                         system_prompt_pieces.append(block.text)
                 continue
 
@@ -56,7 +55,7 @@ class AnthropicLLM(LLM):
                 elif block.type == BlockType.TOOL_USE:
                     api_blocks.append({
                         "type": "tool_use",
-                        "id": block.id,
+                        "id": block.tool_use_id,
                         "name": block.name,
                         "input": block.arguments,
                     })
@@ -64,7 +63,7 @@ class AnthropicLLM(LLM):
                 elif block.type == BlockType.TOOL_RESULT:
                     api_blocks.append({
                         "type": "tool_result",
-                        "tool_use_id": block.id,
+                        "tool_use_id": block.tool_use_id,
                         "content": block.content,
                         "is_error": block.is_error
                     })
@@ -106,9 +105,9 @@ class AnthropicLLM(LLM):
             elif block.type == "tool_use":
                 uniform_blocks.append(
                     UniformToolUseBlock(
-                        id=block.id,
+                        tool_use_id=block.id,
                         name=block.name,
-                        arguments=block.arguments,
+                        arguments=block.input,
                     )
                 )
 
@@ -130,7 +129,7 @@ class AnthropicLLM(LLM):
         try:
 
             system_prompt, native_messages = self._to_native_messages(messages)
-            
+            converted_tool_choice = self._convert_tool_choice(tool_choice)
             kwargs = {
                 "model": self._model_name,
                 "messages": native_messages,
@@ -147,7 +146,7 @@ class AnthropicLLM(LLM):
             if tools:
                 kwargs["tools"] = tools
             if tool_choice:
-                kwargs["tool_choice"] = tool_choice
+                kwargs["tool_choice"] = converted_tool_choice
 
             logger.debug(f"调用 Anthropic客户端向 LLM 发起请求，携带工具信息：{tools if tools else '无'}")
             response = await self._client.messages.create(**kwargs)
@@ -161,7 +160,7 @@ class AnthropicLLM(LLM):
             return uniform_response
         except Exception as e:
             logger.error(f"Anthropic 客户端调用失败：{e}")
-            raise ServerRequestError("调用 Anthropic 客户端失败")
+            raise ServerRequestError("调用 Anthropic 客户端失败") from e
 
     @property
     def max_tokens(self) -> int:
