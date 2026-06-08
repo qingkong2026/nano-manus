@@ -43,7 +43,6 @@ interface CreatePlanResponse {{
 }}
 
 JSON 输出示例：
-```json
 {{
     "message": "用户回复消息",
     "goal": "目标描述",
@@ -56,7 +55,7 @@ JSON 输出示例：
         }}
     ],
 }}
-```
+
 
 输入：
 - message: 用户的消息

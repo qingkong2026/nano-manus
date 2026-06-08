@@ -88,7 +88,7 @@ class AnthropicLLM(LLM):
 
         # 如果传递的是简单字段，比如 auto 或 any
         if isinstance(tool_choice, str):
-            if tool_choice in ["auto", "any"]:
+            if tool_choice in ["auto", "any", "none"]:
                 return {"type": tool_choice}
             # 如果传递的是特定的工具名
             return {"type": "tool", "name": tool_choice}

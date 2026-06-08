@@ -4,7 +4,7 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
-class ExecutionSatus(str, Enum):
+class ExecutionStatus(str, Enum):
     """规划/任务执行的状态"""
 
     PENDING = "pending"  # 空闲 or 等待中
@@ -18,18 +18,18 @@ class Step(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))  # 子任务id
     description: str = ""  # 步骤的描述信息
-    status: ExecutionSatus = ExecutionSatus.PENDING  # 子任务的执行状态
+    status: ExecutionStatus = ExecutionStatus.PENDING  # 子任务的执行状态
     result: Optional[str] = None  # 结果
     error: Optional[str] = None  # 错误信息
     success: bool = False  # 是否执行成功
-    attachements: List[str] = Field(
+    attachments: List[str] = Field(
         default_factory=list
     )  # 附件列表信息（存储的是虚拟机文件路径）
 
     @property
     def done(self) -> bool:
         """read-only, 返回步骤是否结束"""
-        return self.status in [ExecutionSatus.COMPLETED, ExecutionSatus.FAILED]
+        return self.status in [ExecutionStatus.COMPLETED, ExecutionStatus.FAILED]
 
 class Plan(BaseModel):
     """规划Domain模型，用于存储用户传递消息拆分出来的子任务/子步骤"""
@@ -40,7 +40,7 @@ class Plan(BaseModel):
     language: str = ""  # 工作语言
     steps: List[Step] = Field(default_factory=list)  # 步骤列表/子任务列表
     message: str = ""  # 用户传递的消息
-    status: ExecutionSatus = ExecutionSatus.PENDING  # 规划的状态
+    status: ExecutionStatus = ExecutionStatus.PENDING  # 规划的状态
     error: Optional[str] = None  # 错误信息
 
     # todo: 未预留 result 用于记录规划的结果
@@ -48,7 +48,7 @@ class Plan(BaseModel):
     @property
     def done(self) -> bool:
         """read-only, 用于判断计划是否结束"""
-        return self.status in [ExecutionSatus.COMPLETED, ExecutionSatus.FAILED]
+        return self.status in [ExecutionStatus.COMPLETED, ExecutionStatus.FAILED]
 
     def get_next_step(self) -> Optional[Step]:
         """获取需要执行的下一个步骤"""

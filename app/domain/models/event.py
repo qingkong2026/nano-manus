@@ -70,7 +70,7 @@ class MessageEvent(BaseEvent):
     type: Literal["message"] = "message"
     role: Literal["user", "assistant"] = "assistant"
     message: str = ""  # 消息本身
-    attachements: List[File] = Field(default_factory=list)  # 附件列表信息
+    attachments: List[File] = Field(default_factory=list)  # 附件列表信息
 
 
 class BrowserToolOuput(BaseModel):
