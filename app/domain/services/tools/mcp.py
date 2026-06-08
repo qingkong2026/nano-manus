@@ -1,5 +1,6 @@
 import logging
 import os
+import httpx
 from contextlib import AsyncExitStack
 from typing import Dict, List, Optional, Any
 
@@ -178,9 +179,16 @@ class MCPClientManage:
             raise ValueError("连接 streamable-http-mcp 服务器需要配置 url")
 
         try:
+
+            # 创建 httpx.AsyncClient
+            custom_http_client = httpx.AsyncClient(
+                headers=server_config.headers,
+                # 如需 basic auth 也在这里配置
+                # auth=httpx.BasicAuth("user", "pass")
+            )
             # 2.连接 streamable-http 服务
             streamable_http_transport = await self._exit_stack.enter_async_context(
-                streamable_http_client(url=url, headers=server_config.headers)
+                streamable_http_client(url=url, http_client=custom_http_client)
             )
 
             # 获取输入与输出流
