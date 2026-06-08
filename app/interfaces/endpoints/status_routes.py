@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 
 from app.application.services.status_service import StatusService
 from app.domain.models.health_status import HealthStatus
-from app.interfaces.dependencies import get_status_service
+from app.interfaces.service_dependencies import get_status_service
 from app.interfaces.schema import Response
 
 logger = logging.getLogger(__name__)
