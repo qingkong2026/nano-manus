@@ -5,18 +5,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c977dabd-eb26-461b-8243-da35d9e0416c" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/app/domain/services/tools/mcp.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/application/services/app_config_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/application/services/app_config_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/domain/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/domain/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/domain/models/app_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/domain/models/app_config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/domain/services/agents/react.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/domain/services/agents/react.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/infrastructure/repository/file_app_config_repository.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/infrastructure/repository/file_app_config_repository.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/interfaces/endpoints/app_config_routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/interfaces/endpoints/app_config_routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -73,7 +77,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780503645790</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="feat: 1.增加 MCP 服务器动态增删改查的 API 接口">
+      <option name="closed" value="true" />
+      <created>1780915114748</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1780915114748</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -89,6 +101,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="实现应用配置管理的两个接口: 1.获取 llm 配置; 2.更新 llm 配置" />
-    <option name="LAST_COMMIT_MESSAGE" value="实现应用配置管理的两个接口: 1.获取 llm 配置; 2.更新 llm 配置" />
+    <MESSAGE value="feat: 1.增加 MCP 服务器动态增删改查的 API 接口" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: 1.增加 MCP 服务器动态增删改查的 API 接口" />
   </component>
 </project>
