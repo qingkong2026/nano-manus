@@ -93,12 +93,12 @@ class ReActAgent(BaseAgent):
                 message = Message.model_validate(parsed_obj)
 
                 # 提取消息中的附件消息
-                attachments = [File(filepath=filepath) for filepath in message.attachments]
+                atts = [ File(filepath=filepath) for filepath in message.attachments]
  
                 yield MessageEvent(
                     role="assistant",
                     message=message.message,
-                    attachments=attachments
+                    attachments=atts
                 )
             else:
                 yield event

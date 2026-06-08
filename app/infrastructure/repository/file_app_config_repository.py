@@ -6,7 +6,7 @@ from typing import Optional
 from filelock import FileLock, Timeout
 
 from app.application.errors.exceptions import ServerRequestError
-from app.domain.models import AgentConfig, AppConfig, LLMConfig
+from app.domain.models import AgentConfig, AppConfig, LLMConfig, MCPConfig
 from app.domain.repository import AppConfigRepository
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,9 @@ class FileAppConfigRepository(AppConfigRepository):
         """如果配置文件不存在，则创建默认配置"""
         if not self._config_path.exists():
             default_app_config = AppConfig(
-                llm_config=LLMConfig(), agent_config=AgentConfig()
+                llm_config=LLMConfig(), agent_config=AgentConfig(),
+                mcp_config=MCPConfig(),
+
             )
             self.save(default_app_config)
 

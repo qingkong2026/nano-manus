@@ -1,4 +1,5 @@
-from app.domain.models import AgentConfig, AppConfig, LLMConfig
+from app.application.errors.exceptions import NotFoundError
+from app.domain.models import AgentConfig, AppConfig, LLMConfig, MCPConfig
 from app.domain.repository import AppConfigRepository
 
 class AppConfigService:
@@ -42,11 +43,29 @@ class AppConfigService:
         # 3.返回更新后的LLM配置
         return app_config.agent_config
 
+    def update_and_create_mcp_servers(self, mcp_config: MCPConfig) -> MCPConfig:
 
+         app_config = self._load_app_config()
+         app_config.mcp_config.mcpServers.update(mcp_config.mcpServers)
+         self.app_config_repo.save(app_config)
+         return app_config.mcp_config
 
+    def delete_mcp_servers(self, server_name: str) -> MCPConfig:
+        app_config = self._load_app_config()
+        if server_name not in app_config.mcp_config.mcpServers:
+            raise NotFoundError(f"该 MCP服务[{server_name}]不存在，请核实后重试")
 
+        del app_config.mcp_config.mcpServers[server_name]
+        self.app_config_repo.save(app_config)
+        return app_config.mcp_config
 
+    def set_mcp_server_enabled(self, server_name: str , enabled: bool) -> MCPConfig:
+        app_config = self._load_app_config()
+        if server_name not in app_config.mcp_config.mcpServers:
+            raise NotFoundError(f"该 MCP服务[{server_name}]不存在，请核实后重试")
 
-
+        app_config.mcp_config.mcpServers[server_name].enabled = enabled
+        self.app_config_repo.save(app_config)
+        return app_config.mcp_config
 
 
