@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c977dabd-eb26-461b-8243-da35d9e0416c" name="Changes" comment="feat: 1.完成 MCP 工具包的开发">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/domain/services/tools/mcp.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/domain/services/tools/mcp.py" afterDir="false" />
-    </list>
+    <list default="true" id="c977dabd-eb26-461b-8243-da35d9e0416c" name="Changes" comment="fix: 完善 streamable_http 客户端链接的方法" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -99,7 +96,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780938315378</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="fix: 完善 streamable_http 客户端链接的方法">
+      <option name="closed" value="true" />
+      <created>1780939697839</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1780939697839</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -118,6 +123,7 @@
     <MESSAGE value="feat: 1.增加 MCP 服务器动态增删改查的 API 接口" />
     <MESSAGE value="feat: 1.完善MCP服务器管理的接口，增加 get_mcp_servers 接口" />
     <MESSAGE value="feat: 1.完成 MCP 工具包的开发" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: 1.完成 MCP 工具包的开发" />
+    <MESSAGE value="fix: 完善 streamable_http 客户端链接的方法" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: 完善 streamable_http 客户端链接的方法" />
   </component>
 </project>
