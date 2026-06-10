@@ -63,14 +63,10 @@ class RedisStreamTask(Task):
 
     async def run(self) -> None:
         """使用提供的 task_runner 来执行任务"""
-        # 1.任务已经结束 或者 任务正在执行，直接返回
-        if self._execution_task is not None:
-            logger.warning(f"任务[{self._id}]已经结束或正在执行，忽略重复启动")
-            return
-
-        # 2.创建后台任务
-        self._execution_task = asyncio.create_task(self._execute_task())
-        logger.info(f"任务[{self._id}]后台开始执行...")
+        if self.done:
+            # 2.创建后台任务
+            self._execution_task = asyncio.create_task(self._execute_task())
+            logger.info(f"任务[{self._id}]后台开始执行...")
 
     def cancel(self) -> bool:
         """取消当前执行的任务"""

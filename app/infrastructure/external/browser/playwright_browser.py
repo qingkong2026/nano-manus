@@ -24,6 +24,54 @@ class PlaywrightBrowser(BrowserProtocol):
         self.browser: Optional[Browser] = None
         self.page: Optional[Page] = None
 
+    async def _ensure_browser(self) -> None:
+        """确保浏览器存在，如果不存在则初始化"""
+        if not self.browser or not self.page:
+            is_initialized = await self.initialize()
+            if not is_initialized:
+                raise Exception("Failed to Initialize Playwright Browser")
+
+    async def _ensure_page(self) -> None:
+        """确保浏览器页面存在，如果不存在则新建"""
+        await self._ensure_browser()
+
+        # 1.如果页面不存在则创建上下文+页面
+        if not self.page:
+            self.page = await self.browser.new_page()
+        else:
+            contexts = self.browser.contexts
+            if contexts:
+                default_context = contexts[0]
+                pages = default_context.pages
+
+                # 判断页面是否存在
+                if pages:
+                    # 获取当前最新的页面
+                    latest_page = pages[-1]
+                    if self.page != latest_page:
+                        self.page = latest_page
+
+    async def wait_for_page_load(self, timeout: int = 15) -> bool:
+        """传递超时时间，等待当前页面是否加载完毕"""
+        # 1.确保当前页面存在
+        await self._ensure_page()
+
+        # 使用异步任务事件循环中的时间作为开始时间（只和异步任务相关）
+        start_time = asyncio.get_event_loop().time()
+        check_interval = 5
+
+        # 3.循环检测网页是否加载成功
+        while asyncio.get_event_loop().time() - start_time < timeout:
+            # 使用 js 代码判断网页是否加载成功
+            is_completed = await self.page.evaluate("""() => document.readyState === 'complete'""")
+            if is_completed:
+                return True
+
+            # 未加载成功则休眠对面时间
+            await asyncio.sleep(check_interval)
+
+        return False
+
     async def initialize(self) -> bool:
         """初始化并确保资源是可用的"""
         # 1.定义最大重试次数
@@ -70,6 +118,8 @@ class PlaywrightBrowser(BrowserProtocol):
                 retry_interval = max(retry_interval * 2, 10)
                 logger.warning(f"Failed to initialize Playwright browser. Retrying attempt {attempt + 1}...")
                 await asyncio.sleep(retry_interval)
+
+        return False
 
     async def cleanup(self) -> None:
         """清除Playwright资源，包含浏览器、页面、Playwright"""
