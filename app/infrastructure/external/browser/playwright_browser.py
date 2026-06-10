@@ -1,14 +1,21 @@
-import logging
 import asyncio
-from typing import Optional
-from playwright.async_api import Playwright, Browser, Page, async_playwright
+import logging
+from typing import List, Optional
 
+from markdownify import markdownify
+from playwright.async_api import Browser, Page, Playwright, async_playwright
 
 from app.domain.external.browser import Browser as BrowserProtocol
 from app.domain.external.llm import LLM
+from app.domain.models.memory import MessageRole, UniformMessage, UniformTextBlock
 from app.domain.models.tool_result import ToolResult
+from app.infrastructure.external.browser.playwright_browser_fun import (
+    GET_INTERACTIVE_ELEMENT_FUNC,
+    GET_VISIBLE_CONTENT_FUNC,
+)
 
 logger = logging.getLogger(__name__)
+
 
 class PlaywrightBrowser(BrowserProtocol):
     """基于 Playwright 管理的浏览器扩展"""
@@ -63,7 +70,9 @@ class PlaywrightBrowser(BrowserProtocol):
         # 3.循环检测网页是否加载成功
         while asyncio.get_event_loop().time() - start_time < timeout:
             # 使用 js 代码判断网页是否加载成功
-            is_completed = await self.page.evaluate("""() => document.readyState === 'complete'""")
+            is_completed = await self.page.evaluate(
+                """() => document.readyState === 'complete'"""
+            )
             if is_completed:
                 return True
 
@@ -77,21 +86,28 @@ class PlaywrightBrowser(BrowserProtocol):
         # 1.定义最大重试次数
         max_retries = 3
         retry_interval = 1
-        BLANK_PAGE_URLS = {"about:blank", "chrome://newtab", "chrome://new-tab-page/", ""}
+        BLANK_PAGE_URLS = {
+            "about:blank",
+            "chrome://newtab",
+            "chrome://new-tab-page/",
+            "",
+        }
 
         for attempt in range(max_retries):
             try:
                 # 1.创建 playwright 上下文并连接到 cdp 浏览器
                 self.playwright = await async_playwright().start()
-                self.browser = await self.playwright.chromium.connect_over_cdp(self.cdp_url)
+                self.browser = await self.playwright.chromium.connect_over_cdp(
+                    self.cdp_url
+                )
 
                 # 2.获取浏览器上下文
                 contexts = self.browser.contexts
 
                 # 如果上下文存在，并且第一个上下文只有一个页面
-                if contexts and contexts[0].pages and  len(contexts[0].pages) == 1:
+                if contexts and contexts[0].pages and len(contexts[0].pages) == 1:
                     page = contexts[0].pages[0]
-                    
+
                     # 判断当前页面是不是空页面，如果不是，则创建新的页面
                     if page.url in BLANK_PAGE_URLS:
                         self.page = page
@@ -111,12 +127,16 @@ class PlaywrightBrowser(BrowserProtocol):
 
                 # 判断重试次数是否等于最大重试次数
                 if attempt + 1 == max_retries:
-                    logger.error(f"Playwright initialization failed after {max_retries} retries: {str(e)}")
+                    logger.error(
+                        f"Playwright initialization failed after {max_retries} retries: {str(e)}"
+                    )
                     return False
 
                 # 使用指数级进行休眠
                 retry_interval = max(retry_interval * 2, 10)
-                logger.warning(f"Failed to initialize Playwright browser. Retrying attempt {attempt + 1}...")
+                logger.warning(
+                    f"Failed to initialize Playwright browser. Retrying attempt {attempt + 1}..."
+                )
                 await asyncio.sleep(retry_interval)
 
         return False
@@ -154,5 +174,62 @@ class PlaywrightBrowser(BrowserProtocol):
             self.page = None
             self.browser = None
             self.playwright = None
+
+    async def _extract_content(self) -> str:
+        """提取当前页面的内容"""
+        # 1.使用 js 代码获取当前页面可见元素内容
+        visible_content = await self.page.evaluate(GET_VISIBLE_CONTENT_FUNC)
+
+        # 2.使用 markdownify  这个库将 html 文档转换成 makrdown
+        markdown_content = markdownify(visible_content)
+
+        # 3.模型上下文有限，提取最大不超过 50k 个字符
+        max_content_length = min(len(markdown_content), 50000)
+
+        trimmed_content = markdown_content[:max_content_length] 
+        # 判断是否传递了 llm,如果传递了，使用 llm 进行整理
+        if self.llm:
+            messages: List[UniformMessage] = [
+                UniformMessage(
+                    role=MessageRole.SYSTEM,
+                    content=[UniformTextBlock(text="你是一名专业的网页信息提取助手。请从当前页面内容中提取所有信息并将其转换为markdown格式。")]
+                ),
+                UniformMessage(
+                    role=MessageRole.USER,
+                    content=[UniformTextBlock(text=trimmed_content)]
+                )
+            ]
+
+            llm_resp: UniformMessage = await self.llm.invoke(messages)
             
-    
+            text_parts = []
+            for block in llm_resp.content:
+                if isinstance(block, UniformTextBlock) and block.text.strip():
+                    text_parts.append(block.text)
+            return "\n".join(text_parts)
+        else:
+            return trimmed_content
+
+    async def _extract_interactive_elements(self) -> List[str]:
+        """提取当前页面上的可交互元素"""
+
+        # 1.确保页面存在
+        await self._ensure_page()
+
+        # 2.清除当前页面上的缓存可交互元素列表
+        self.interactive_elements_cache = []
+
+        # 3.执行 js 脚本获取可交互的元素列表
+        interactive_elements = await self.page.evaluate(GET_INTERACTIVE_ELEMENT_FUNC)
+
+        # 4.更新缓存的可交互元素列表
+        self.interactive_elements_cache = interactive_elements
+
+        # 5.格式化可交付元素为字符串
+        formatted_elements = []
+        for element in interactive_elements:
+            formatted_elements.append(f"{element['index']}:<{element['tag']}>{element['text']}</{element['tag']}>")
+
+        return formatted_elements
+        
+        
