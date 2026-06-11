@@ -58,7 +58,7 @@ class Browser(Protocol):
         """向上滚动浏览器，如果没传递 to_top=True, 则向上滚动一页，否则直接滚动到顶部"""
         ...
 
-    async def scroll_down(self, to_bottom: Optional[bool] = None) -> ToolResult:
+    async def scroll_down(self, to_down: Optional[bool] = None) -> ToolResult:
         """向下滚动浏览器，如果没传递 to_bottom=True, 则向下滚动一页，否则直接滚动到底部"""
         ...
 

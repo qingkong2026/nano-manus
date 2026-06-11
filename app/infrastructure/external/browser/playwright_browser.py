@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import List, Optional
+from socket import timeout
+from typing import Any, List, Optional
 
 from markdownify import markdownify
 from playwright.async_api import Browser, Page, Playwright, async_playwright
@@ -80,6 +81,97 @@ class PlaywrightBrowser(BrowserProtocol):
             await asyncio.sleep(check_interval)
 
         return False
+
+    async def navigate(self, url: str) -> ToolResult:
+        """根据传递的 url 跳转到指定页面"""
+        # 1.确保页面存在
+        await self._ensure_page()
+
+        try:
+            # 1.在跳转之前先将可交互元素的缓存清空
+            self.interactive_elements_cache = []
+
+            # 使用 goto 进行跳转
+            await self.page.goto(url)
+            return ToolResult(
+                success=True,
+                data={"interactive_elements": self._extract_interactive_elements()},
+            )
+
+        except Exception as e:
+            return ToolResult(success=False, message=f"浏览器导航到{url}失败")
+
+    async def view_page(self) -> ToolResult:
+        """获取当前页面的内容（内容+可交互元素）"""
+        # 1.确保页面存在
+        await self._ensure_page()
+
+        # 2.等待页面加载完成
+        await self.wait_for_page_load()
+
+        # 3.更新页面的可交互元素
+        interactive_elements = await self._extract_interactive_elements()
+        content = await self._extract_content()
+
+        # 4.返回工具结果
+        return ToolResult(
+            success=True,
+            data={"content": content, "interactive_elements": interactive_elements},
+        )
+
+    async def restart(self, url: str) -> ToolResult:
+        """重启并跳转到指定 URL"""
+        await self.cleanup()
+        return await self.navigate(url)
+
+    async def scroll_up(self, to_top: Optional[bool] = None) -> ToolResult:
+        """向上滚动浏览器一个屏幕或者到最页面顶部"""
+        await self._ensure_page()
+
+        if to_top:
+            await self.page.evaluate("window.scrollTo(0,0)")
+        else:
+            await self.page.evaluate("window.scrollTo(0, -window.innerHeight)")
+
+        return ToolResult(success=True)
+
+    async def scroll_down(self, to_down: Optional[bool] = None) -> ToolResult:
+        """向下滚动浏览器一个屏幕或者到页面最底部"""
+        await self._ensure_page()
+
+        if to_down:
+            await self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        else:
+            await self.page.evaluate("window.scrollBy(0, window.innerHeight)")
+
+        return ToolResult(success=True)
+
+    async def screenshot(self, full_page: Optional[bool] = None) -> bytes:
+        """传递 full_page 完成页面截图"""
+        await self._ensure_page()
+
+        # 创建一个截图配置
+        screenshot_options = {"full_page": full_page, "type": "png"}
+
+        return await self.page.screenshot(**screenshot_options)
+
+    async def console_exec(self, javascript: str) -> ToolResult:
+        """传递 js 代码在当前页面控制台执行"""
+        await self._ensure_page()
+        result = await self.page.evaluate(javascript)
+        return ToolResult(success=True, data={"result": result})
+
+    async def console_view(self, max_lines: Optional[int] = None) -> ToolResult:
+        """根据传递的行数查看控制台的日志"""
+        await self._ensure_page()
+        logs = await self.page.evaluate("""() => {
+            return window.console.logs || [];
+        }""")
+
+        if max_lines is not None:
+            logs = logs[-max_lines]
+
+        return ToolResult(success=True, data={"logs": logs})
 
     async def initialize(self) -> bool:
         """初始化并确保资源是可用的"""
@@ -186,22 +278,26 @@ class PlaywrightBrowser(BrowserProtocol):
         # 3.模型上下文有限，提取最大不超过 50k 个字符
         max_content_length = min(len(markdown_content), 50000)
 
-        trimmed_content = markdown_content[:max_content_length] 
+        trimmed_content = markdown_content[:max_content_length]
         # 判断是否传递了 llm,如果传递了，使用 llm 进行整理
         if self.llm:
             messages: List[UniformMessage] = [
                 UniformMessage(
                     role=MessageRole.SYSTEM,
-                    content=[UniformTextBlock(text="你是一名专业的网页信息提取助手。请从当前页面内容中提取所有信息并将其转换为markdown格式。")]
+                    content=[
+                        UniformTextBlock(
+                            text="你是一名专业的网页信息提取助手。请从当前页面内容中提取所有信息并将其转换为markdown格式。"
+                        )
+                    ],
                 ),
                 UniformMessage(
                     role=MessageRole.USER,
-                    content=[UniformTextBlock(text=trimmed_content)]
-                )
+                    content=[UniformTextBlock(text=trimmed_content)],
+                ),
             ]
 
             llm_resp: UniformMessage = await self.llm.invoke(messages)
-            
+
             text_parts = []
             for block in llm_resp.content:
                 if isinstance(block, UniformTextBlock) and block.text.strip():
@@ -228,8 +324,146 @@ class PlaywrightBrowser(BrowserProtocol):
         # 5.格式化可交付元素为字符串
         formatted_elements = []
         for element in interactive_elements:
-            formatted_elements.append(f"{element['index']}:<{element['tag']}>{element['text']}</{element['tag']}>")
+            formatted_elements.append(
+                f"{element['index']}:<{element['tag']}>{element['text']}</{element['tag']}>"
+            )
 
         return formatted_elements
-        
-        
+
+    async def _get_element_by_id(self, index: int) -> Optional[Any]:
+        """根据传递的索引/id获取对应的元素"""
+        # 1.判断当前页面是否存在可交互元素缓存
+        if (
+            not hasattr(self, "interactive_elements_cache") or 
+            not self.interactive_elements_cache or 
+            index >= len(self.interactive_elements_cache)
+        ):
+            return None
+
+        # 2.构建选择器
+        selector = f'[data-manus-id="manus-element-{index}"]'
+        return await self.page.query_selector(selector)
+
+    async def click(
+        self,
+        index: Optional[int] = None,
+        coordinate_x: Optional[float] = None,
+        coordinate_y: Optional[float] = None,
+    ) -> ToolResult:
+        """根据传递的索引位置 + xy 坐标实现点击元素"""
+        # 1.确保页面存在
+        await self._ensure_page()
+
+        # 2.判断传递的是 xy 坐标还是索引位置
+        if coordinate_x is not None and coordinate_y is not None:
+            await self.page.mouse.click(coordinate_x, coordinate_y)
+        elif index is not None:
+            try:
+                # 根据 index 获取
+                element = await self._get_element_by_id(index)
+                if not element:
+                    return ToolResult(success=False, message="Element not found, index: " + str(index))
+    
+                # 检查元素是否可见
+                is_visible = await self.page.evaluate("""(element) => {
+                    if(!element) return false;
+                    const rect = element.getBoundingClientRect();
+                    const style = getComputedStyle(element);
+                    return !(
+                        rect.width === 0 || rect.height === 0 ||
+                        style.display === 'none' || style.visibility === 'hidden' ||
+                        style.opacity === '0'
+                    );
+                }""", element)
+    
+                # 如果元素不可见，则执行以下代码
+                if not is_visible:
+                    # 尝试将页面滚动到该元素的位置
+                    await self.page.evaluate("""(element) => {
+                        if (element) {
+                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }""", element)
+                    await asyncio.sleep(1)
+    
+                # 点击元素
+                await element.click(timeout=5000)
+                return ToolResult(success=True)
+            except Exception as e:
+                return ToolResult(success=False, message=f"Failed to click element by index {index}: {str(e)}")
+        return ToolResult(success=True)
+
+    async def input(
+        self,
+        text: str,
+        press_enter: bool,
+        index: Optional[int] = None,
+        coordinate_x: Optional[float] = None,
+        coordinate_y: Optional[float] = None,
+    ) -> ToolResult:
+        """根据传递的文本 + 换行标识 + 索引 + xy位置实现输入框文本输入"""
+
+        # 1.确保页面存在
+        await self._ensure_page()
+
+        # 2.根据索引或坐标定位元素
+        if coordinate_x is not None and coordinate_y is not None:
+            # 3.点击指定位置后输入文本
+            await self.page.mouse.click(coordinate_x, coordinate_y)
+            await self.page.keyboard.type(text)
+        elif index is not None:
+            try:
+                # 根据所用查找元素
+                element = self._get_element_by_id(index)
+                if not element:
+                    return ToolResult(success=False, message="Failed to input text, element not found")
+
+                try:
+                    # 先清空原始输入框的内容然后再填充
+                    await element.fill("")
+                    await element.type(text)
+                except Exception as e:
+                    return ToolResult(success=False, message=f"Failed to input text, {str(e)}")
+            except Exception as e:
+                return ToolResult(success=False, message=f"Failed to input text, {str(e)}")
+
+        # 判断是否按 Enter 键
+        if press_enter:
+            await self.page.keyboard.press("enter")
+
+        return ToolResult(success=True)
+
+    async def move_mouse(
+        self,
+        coordinate_x: Optional[float] = None,
+        coordinate_y: Optional[float] = None,
+    ) -> ToolResult:
+        """传递 xy 坐标，移动鼠标到指定位置"""
+        await self._ensure_page()
+        await self.page.mouse.move(coordinate_x, coordinate_y)
+        return ToolResult(success=True)
+
+    async def press_key(self, key: str) -> ToolResult:
+        """传递按键进行模拟按键操作"""
+        await self._ensure_page()
+        await self.page.keyboard.press(key)
+        return ToolResult(success=True)
+
+    async def select_option(self, index: int, option: int) -> ToolResult:
+        """传递索引 + 下拉菜单选项序号，在下拉菜单中选择指定的选项"""
+        await self._ensure_page()
+
+        try:
+            # 获取元素信息
+            element = await self._get_element_by_id(index)
+            if not element:
+                return ToolResult(success=False, message="Element not found, index: " + str(index))
+
+            # 调用函数直接选择对应选项
+            await element.select_option(index=option)
+            return ToolResult(success=True)
+            
+        except Exception as e:
+            return ToolResult(success=False, message=f"Failed to select option: {str(e)}")
+
+    
