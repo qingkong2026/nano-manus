@@ -93,9 +93,11 @@ class PlaywrightBrowser(BrowserProtocol):
 
             # 使用 goto 进行跳转
             await self.page.goto(url)
+
+            interactive_elements = await self._extract_interactive_elements()
             return ToolResult(
                 success=True,
-                data={"interactive_elements": self._extract_interactive_elements()},
+                data={"interactive_elements": interactive_elements},
             )
 
         except Exception as e:
@@ -169,7 +171,7 @@ class PlaywrightBrowser(BrowserProtocol):
         }""")
 
         if max_lines is not None:
-            logs = logs[-max_lines]
+            logs = logs[-max_lines:]
 
         return ToolResult(success=True, data={"logs": logs})
 
@@ -334,9 +336,9 @@ class PlaywrightBrowser(BrowserProtocol):
         """根据传递的索引/id获取对应的元素"""
         # 1.判断当前页面是否存在可交互元素缓存
         if (
-            not hasattr(self, "interactive_elements_cache") or 
-            not self.interactive_elements_cache or 
-            index >= len(self.interactive_elements_cache)
+            not hasattr(self, "interactive_elements_cache")
+            or not self.interactive_elements_cache
+            or index >= len(self.interactive_elements_cache)
         ):
             return None
 
@@ -362,10 +364,13 @@ class PlaywrightBrowser(BrowserProtocol):
                 # 根据 index 获取
                 element = await self._get_element_by_id(index)
                 if not element:
-                    return ToolResult(success=False, message="Element not found, index: " + str(index))
-    
+                    return ToolResult(
+                        success=False, message="Element not found, index: " + str(index)
+                    )
+
                 # 检查元素是否可见
-                is_visible = await self.page.evaluate("""(element) => {
+                is_visible = await self.page.evaluate(
+                    """(element) => {
                     if(!element) return false;
                     const rect = element.getBoundingClientRect();
                     const style = getComputedStyle(element);
@@ -374,23 +379,31 @@ class PlaywrightBrowser(BrowserProtocol):
                         style.display === 'none' || style.visibility === 'hidden' ||
                         style.opacity === '0'
                     );
-                }""", element)
-    
+                }""",
+                    element,
+                )
+
                 # 如果元素不可见，则执行以下代码
                 if not is_visible:
                     # 尝试将页面滚动到该元素的位置
-                    await self.page.evaluate("""(element) => {
+                    await self.page.evaluate(
+                        """(element) => {
                         if (element) {
                             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
-                    }""", element)
+                    }""",
+                        element,
+                    )
                     await asyncio.sleep(1)
-    
+
                 # 点击元素
                 await element.click(timeout=5000)
                 return ToolResult(success=True)
             except Exception as e:
-                return ToolResult(success=False, message=f"Failed to click element by index {index}: {str(e)}")
+                return ToolResult(
+                    success=False,
+                    message=f"Failed to click element by index {index}: {str(e)}",
+                )
         return ToolResult(success=True)
 
     async def input(
@@ -414,18 +427,24 @@ class PlaywrightBrowser(BrowserProtocol):
         elif index is not None:
             try:
                 # 根据所用查找元素
-                element = self._get_element_by_id(index)
+                element = await self._get_element_by_id(index)
                 if not element:
-                    return ToolResult(success=False, message="Failed to input text, element not found")
+                    return ToolResult(
+                        success=False, message="Failed to input text, element not found"
+                    )
 
                 try:
                     # 先清空原始输入框的内容然后再填充
                     await element.fill("")
                     await element.type(text)
                 except Exception as e:
-                    return ToolResult(success=False, message=f"Failed to input text, {str(e)}")
+                    return ToolResult(
+                        success=False, message=f"Failed to input text, {str(e)}"
+                    )
             except Exception as e:
-                return ToolResult(success=False, message=f"Failed to input text, {str(e)}")
+                return ToolResult(
+                    success=False, message=f"Failed to input text, {str(e)}"
+                )
 
         # 判断是否按 Enter 键
         if press_enter:
@@ -457,13 +476,15 @@ class PlaywrightBrowser(BrowserProtocol):
             # 获取元素信息
             element = await self._get_element_by_id(index)
             if not element:
-                return ToolResult(success=False, message="Element not found, index: " + str(index))
+                return ToolResult(
+                    success=False, message="Element not found, index: " + str(index)
+                )
 
             # 调用函数直接选择对应选项
             await element.select_option(index=option)
             return ToolResult(success=True)
-            
-        except Exception as e:
-            return ToolResult(success=False, message=f"Failed to select option: {str(e)}")
 
-    
+        except Exception as e:
+            return ToolResult(
+                success=False, message=f"Failed to select option: {str(e)}"
+            )

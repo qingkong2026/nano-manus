@@ -1,4 +1,4 @@
-from typing import Protocol, Optional
+from typing import Optional, Protocol
 
 from app.domain.models.tool_result import ToolResult
 
@@ -59,7 +59,7 @@ class Browser(Protocol):
         ...
 
     async def scroll_down(self, to_down: Optional[bool] = None) -> ToolResult:
-        """向下滚动浏览器，如果没传递 to_bottom=True, 则向下滚动一页，否则直接滚动到底部"""
+        """向下滚动浏览器，如果没传递 to_down=True, 则向下滚动一页，否则直接滚动到底部"""
         ...
 
     async def screenshot(self, full_page: Optional[bool] = None) -> bytes:
