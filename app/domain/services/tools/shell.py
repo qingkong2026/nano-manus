@@ -20,7 +20,7 @@ class ShellToolSet(BaseToolSet):
 
 
     @tool(
-        name="shell_exec",
+        name="shell_execute",
         description="在指定 Shell 命令中执行命令。可用于运行代码，安装依赖包或文件管理",
         parameters={
             "session_id": {
@@ -38,7 +38,7 @@ class ShellToolSet(BaseToolSet):
         },
         required=["session_id", "exec_dir", "command"],
     )
-    async def shell_exec(
+    async def shell_execute(
         self, session_id: str, exec_dir: str, command: str
     ) -> ToolResult:
         """执行脚本"""
@@ -46,7 +46,7 @@ class ShellToolSet(BaseToolSet):
     
 
     @tool(
-        name="shell_view",
+        name="shell_read_output",
         description="根据会话id查看指定 Shell 会话中最近一次命令执行的输出结果",
         parameters={
             "session_id": {
@@ -56,12 +56,12 @@ class ShellToolSet(BaseToolSet):
         },
         required=["session_id"],
     )
-    async def shell_view(self, session_id: str) -> ToolResult:
+    async def shell_read_output(self, session_id: str) -> ToolResult:
         """根据会话id查看shell执行结果"""
-        return await self.sandbox.view_shell(session_id=session_id)
+        return await self.sandbox.read_shell_output(session_id=session_id)
 
     @tool(
-        name="shell_wait",
+        name="shell_wait_process",
         description="等待指定 Shell 会话中正在运行的进程返回，可指定最长等待秒数",
         parameters={
             "session_id": {
@@ -75,13 +75,13 @@ class ShellToolSet(BaseToolSet):
         },
         required=["session_id"],
     )
-    async def shell_wait(self, session_id: str, seconds: Optional[int] = None) -> ToolResult:
+    async def shell_wait_process(self, session_id: str, seconds: Optional[int] = None) -> ToolResult:
         """等待指定 Shell 会话中正在运行的进程返回"""
-        return await self.sandbox.wait_for_process(session_id=session_id, seconds=seconds)
+        return await self.sandbox.wait_process(session_id=session_id, seconds=seconds)
 
 
     @tool(
-        name="shell_write_to_process",
+        name="shell_write_input",
         description="向指定 Shell 会话中正在运行的进程写入输入文本，可选择是否按下回车",
         parameters={
             "session_id": {
@@ -99,14 +99,14 @@ class ShellToolSet(BaseToolSet):
         },
         required=["session_id", "input_text", "press_enter"],
     )
-    async def shell_write_to_process(
+    async def shell_write_input(
         self,
         session_id: str,
         input_text: str,
         press_enter: bool,
     ) -> ToolResult:
         """向指定 Shell 会话正在运行的进程写入输入文本"""
-        return await self.sandbox.write_to_process(session_id=session_id, input_text=input_text, press_enter=press_enter)
+        return await self.sandbox.write_shell_input(session_id=session_id, input_text=input_text, press_enter=press_enter)
 
 
     @tool(
