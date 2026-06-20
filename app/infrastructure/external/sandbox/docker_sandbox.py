@@ -1,5 +1,5 @@
+import io
 import logging
-from docker.api import network, service
 from docker.models.resource import Model
 import httpx
 import asyncio
@@ -7,13 +7,14 @@ import socket
 import uuid
 import docker
 
-from typing import Optional, Self
+from typing import Optional, Self, BinaryIO
 from async_lru import alru_cache
 
 from app.domain.external.browser import Browser
 from app.domain.external.sandbox import Sandbox
 from app.domain.models.tool_result import ToolResult
 from app.infrastructure.external.browser.playwright_browser import PlaywrightBrowser
+from app.infrastructure.external.sandbox.dto.file import FileCheckRequest, FileDeleteRequest, FileFindRequest, FileReadRequest, FileReplaceRequest, FileSearchRequest, FileWriteRequest
 from core.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -92,7 +93,7 @@ class DockerSandbox(Sandbox):
         return ip_address
 
     @classmethod
-    async def _create_task(cls) -> Self:
+    def _create_task(cls) -> Self:
         """创建沙箱容器的异步任务"""
         # 1.获取系统配置信息
         settings: Settings = get_settings()
@@ -232,7 +233,7 @@ class DockerSandbox(Sandbox):
                 # 7.循环遍历所有的服务并判断是否全部正常运行
                 all_running = True
                 non_running_service = []
-                for servcie in services:
+                for service in services:
                     service_name = service.get("name", "unknown")
                     state_name = service.get("statename", "")
 
@@ -256,3 +257,156 @@ class DockerSandbox(Sandbox):
         # 经过 max_retries 次检测后还无法确认，则抛出异常
         logger.error(f"在经过 {max_retries} 次尝试后仍无法确认 Sandbox Supervisor 状态信息")
         raise Exception(msg=f"在经过 {max_retries} 次尝试后仍无法确认 Sandbox Supervisor 状态信息")
+
+    
+    async def read_file(
+        self,
+        filepath: str,
+        start_line: Optional[int] = None,
+        end_line: Optional[int] = None,
+        sudo: bool = None,
+        max_length: int = 10000
+    ) -> ToolResult:
+        """
+        读取沙箱中指定路径的文件内容
+        """
+        response = await self.client.post(
+            url=f"{self._base_url}/api/file/read-file",
+            json=FileReadRequest(
+                filepath=filepath,
+                start_line=start_line,
+                end_line=end_line,
+                sudo=sudo,
+                max_length=max_length,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+
+    async def write_file(self, filepath: str, content: str, append: Optional[bool] = False, leading_newline: Optional[bool] = False, trailing_newline: Optional[bool] = False, sudo: Optional[bool] = False) -> ToolResult:
+        
+        response = await self.client.post(
+            url=f"{self._base_url}/api/file/write-file",
+            json=FileWriteRequest(
+                filepath=filepath,
+                content=content,
+                append=append,
+                leading_newline=leading_newline,
+                trailing_newline=trailing_newline,
+                sudo=sudo
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+
+    async def replace_in_file(self, filepath: str, old_str: str, new_str: str, sudo: Optional[bool] = False) -> ToolResult:
+        
+        response = await self.client.post(
+            url=f"{self._base_url}/api/file/replace-in-file",
+            json=FileReplaceRequest(
+                filepath=filepath,
+                old_str=old_str,
+                new_str=new_str,
+                sudo=sudo,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+
+    async def search_in_file(self, filepath: str, regex: str, sudo: Optional[bool] = False) -> ToolResult:
+        
+        response = await self.client.post(
+            url=f"{self._base_url}/api/file/search-in-file",
+            json=FileSearchRequest(
+                filepath=filepath,
+                regex=regex,
+                sudo=sudo,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+
+    async def find_files(self, dir_path: str, glob_pattern: str) -> ToolResult:
+        
+        response = await self.client.post(
+            url=f"{self._base_url}/api/file/find-files",
+            json=FileFindRequest(
+                dir_path=dir,
+                glob_pattern=glob_pattern,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+
+    async def list_files(self, dir_path: str) -> ToolResult:
+        """
+        传递目录，列出沙箱指定目录下的所有文件
+        """
+        return await self.find_files(dir_path=dir_path, glob_pattern="*")
+
+    async def check_file_exists(self, filepath: str) -> ToolResult:
+        """
+        传递指定路径检查沙箱中指定文件是否存在
+        """
+        response = await self.client.post(
+            url=f"{self._base_url}/api/file/check-file-exists",
+            json=FileCheckRequest(
+                filepath=filepath,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+
+    async def delete_file(self, filepath: str) -> ToolResult:
+        """
+        传递路径，删除指定文件
+        """
+        response = await self.client.post(
+            url=f"{self._base_url}/api/file/delete-file",
+            json=FileDeleteRequest(
+                filepath=filepath,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+        
+    async def upload_file(self, file_data: BinaryIO, filepath: str, filename: Optional[str] = None) -> ToolResult:
+        """
+        将文件上传到沙箱指定位置
+        """
+        # 1.预配置上传数据
+        files = {"file": (filename or "upload", file_data, "application/octet-stream")}
+        data = {"filepath": filepath}
+
+        response = await self.client.post(
+            url=f"{self._base_url}/api/file/upload-file",
+            files=files,
+            data=data,
+            timeout=30.0
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+
+    async def download_file(self, filepath: str) -> BinaryIO:
+        """
+        从沙箱中下载文件
+        """
+        response = await self.client.get(
+            url=f"{self._base_url}/api/file/download-file",
+            params={"filepath": filepath},
+            timeout=20.0
+        )
+        response.raise_for_status()
+
+        raw_bytes: bytes = await response.read()
+        return io.BytesIO(raw_bytes)
+
+
