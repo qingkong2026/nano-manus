@@ -13,7 +13,7 @@ class ToolResult(BaseModel, Generic[T]):
     data: Optional[T] = None  # 工具的执行结果、数据
 
     @classmethod
-    def from_sandbox(cls, code: int , msg: str , data: Optional[T], **kwargs) -> "ToolResult":
+    def from_sandbox(cls, code: int , msg: str , data: Optional[T] = None, **kwargs) -> "ToolResult":
         """
         将从沙箱中返回的 API 数据转换为工具结果
         """

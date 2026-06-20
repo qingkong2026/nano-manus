@@ -153,7 +153,7 @@ class DockerSandbox(Sandbox):
             return DockerSandbox(ip=ip)
         
         # 4.使用子线程创建一个容器后返回
-        return await asyncio.to_thead(cls._create_task)
+        return await asyncio.to_thread(cls._create_task)
 
     async def destroy(self) -> bool:
         """
@@ -175,23 +175,23 @@ class DockerSandbox(Sandbox):
 
     @classmethod
     @alru_cache(maxsize=128, typed=True)
-    async def get(cls, id: str) -> Self:
+    async def get(cls, sandbox_id: str) -> Self:
         """
-        根据传递的 id 获取沙箱实例
+        根据传递的 sandbox_id 获取沙箱实例
         """
         # 1.先获取系统配置并判断是否直连沙箱
         settings: Settings = get_settings()
         if settings.sandbox_address:
-            ip = cls._resolve_hostname_to_ip(settings.sandbox_address)
-            return DockerSandbox(ip=ip, container_name=id)
+            ip = await cls._resolve_hostname_to_ip(settings.sandbox_address)
+            return DockerSandbox(ip=ip, container_name=sandbox_id)
         
         # 2.创建 docker 客户端并根据容器名字获取容器
         docker_client = docker.from_env()
-        container = docker_client.containers.get(id)
+        container = docker_client.containers.get(sandbox_id)
 
         # 3.获取容器的 ip 地址
         ip = cls._get_container_ip(container)
-        return DockerSandbox(ip=ip, container_name=id)
+        return DockerSandbox(ip=ip, container_name=sandbox_id)
 
 
     async def get_browser(self) -> Browser:
@@ -257,7 +257,8 @@ class DockerSandbox(Sandbox):
         
         # 经过 max_retries 次检测后还无法确认，则抛出异常
         logger.error(f"在经过 {max_retries} 次尝试后仍无法确认 Sandbox Supervisor 状态信息")
-        raise Exception(msg=f"在经过 {max_retries} 次尝试后仍无法确认 Sandbox Supervisor 状态信息")
+        raise Exception(f"在经过 {max_retries} 次尝试后仍无法确认 Sandbox Supervisor 状态信息")
+
 
     
     async def read_file(
