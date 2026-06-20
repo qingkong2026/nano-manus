@@ -15,6 +15,7 @@ from app.domain.external.sandbox import Sandbox
 from app.domain.models.tool_result import ToolResult
 from app.infrastructure.external.browser.playwright_browser import PlaywrightBrowser
 from app.infrastructure.external.sandbox.dto.file import FileCheckRequest, FileDeleteRequest, FileFindRequest, FileReadRequest, FileReplaceRequest, FileSearchRequest, FileWriteRequest
+from app.infrastructure.external.sandbox.dto.shell import ShellExecuteReqeust, ShellKillRequest, ShellReadRequest, ShellWaitRequest, ShellWriteRequest
 from core.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -409,4 +410,72 @@ class DockerSandbox(Sandbox):
         raw_bytes: bytes = await response.read()
         return io.BytesIO(raw_bytes)
 
+    async def exec_command(self, session_id: str, exec_dir: str, command: str) -> ToolResult:
+        
+        response = await self.client.post(
+            url=f"{self._base_url}/api/shell/exec-command",
+            json=ShellExecuteReqeust(
+                session_id=session_id,
+                exec_dir=exec_dir,
+                command=command,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        
+        response.raise_for_status()
 
+        return ToolResult.from_sandbox(**response.json())
+
+    async def read_shell_output(self, session_id: str, console: bool = False) -> ToolResult:
+        
+        response = await self.client.post(
+            url=f"{self._base_url}/api/shell/read-shell-output",
+            json=ShellReadRequest(
+                session_id=session_id,
+                console=console,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+    
+    async def wait_process(self, session_id: str, seconds: Optional[int] = None) -> ToolResult:
+        
+        response = await self.client.post(
+            url=f"{self._base_url}/api/shell/wait-process",
+            json=ShellWaitRequest(
+                session_id=session_id,
+                seconds=seconds,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+
+    async def write_shell_input(self, session_id: str, input_text: str, press_enter: bool = True) -> ToolResult:
+        
+        response = await self.client.post(
+            url=f"{self._base_url}/api/shell/write-shell-input",
+            json=ShellWriteRequest(
+                session_id=session_id,
+                input_text=input_text,
+                press_enter=press_enter,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+    
+
+    async def kill_process(self, session_id: str) -> ToolResult:
+        
+        response = await self.client.post(
+            url=f"{self._base_url}/api/shell/kill-process",
+            json=ShellKillRequest(
+                session_id=session_id,
+            ).model_dump(mode="json", exclude_none=True)
+        )
+        response.raise_for_status()
+
+        return ToolResult.from_sandbox(**response.json())
+    
+    

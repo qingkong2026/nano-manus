@@ -5,7 +5,7 @@ from app.domain.models.tool_result import ToolResult
 
 
 class Sandbox(Protocol):
-    """沙箱服务扩展协议，包含文件工具协议、Shell工具协议以及沙箱本身的扩展"""
+    """沙箱服务扩展协议,包含文件工具协议、Shell工具协议以及沙箱本身的扩展"""
 
     async def exec_command(
         self, session_id: str, exec_dir: str, command: str
