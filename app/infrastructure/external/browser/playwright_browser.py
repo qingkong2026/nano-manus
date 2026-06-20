@@ -245,7 +245,7 @@ class PlaywrightBrowser(BrowserProtocol):
         return False
 
     async def cleanup(self) -> None:
-        """清除Playwright资源，包含浏览器、页面、Playwright"""
+        """清除Playwright资源,包含浏览器、页面、Playwright"""
         try:
             # 1.检查浏览器是否存在，如果存在则删除该浏览器下的所有 tabs 页面
             if self.browser:
